@@ -5,7 +5,7 @@ Maintainer: Yi-Shin Li <ysli@araisrobo.com>
 Build-Depends: debhelper (>> 4.0.0),
     @KERNEL_DEPENDS@, @KERNEL_HEADERS@, @EXTRA_BUILD@, g++, make, libc6-dev,
     tcl@TCLTK_VERSION@-dev, tk@TCLTK_VERSION@-dev, bwidget, cpio,
-    libxaw7-dev, libncurses-dev, libreadline5-dev,
+    libxaw7-dev, libncurses-dev, libreadline-dev,
     xsltproc, groff, dvipng, 
     lyx, ghostscript, imagemagick, texlive-latex-base, texlive-extra-utils,
     texlive-font-utils, python, python-dev, python-tk,
@@ -39,7 +39,7 @@ Architecture: any
 Recommends: hostmot2-firmware, emc2-doc-en | emc2-doc-fr
 Depends: ${shlibs:Depends}, @KERNEL_DEPENDS@,
     tcl@TCLTK_VERSION@, tk@TCLTK_VERSION@, bwidget (>= 1.7),
-    libreadline5, libwou (>= 0.1-9),
+    libreadline, libwou (>= 0.1-9),
     python (>= @PYTHON_VERSION@), python (<< @PYTHON_VERSION_NEXT@),
     ${python:Depends},
     python@PYTHON_VERSION@-tk,

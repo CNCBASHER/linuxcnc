@@ -19,6 +19,13 @@
 python_version = @PYTHON_VERSION@
 kernel_version = @KERNEL_VERSION@
 
+# ifneq (,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
+#     NUMJOBS = $(patsubst parallel=%,%,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
+#     MAKEFLAGS += -j$(NUMJOBS)
+# endif
+MAKEFLAGS += -j5
+
+
 debian/control:
 	echo '# THIS FILE IS AUTO-GENERATED FROM control.in' > debian/control
 	sed -e 's/@@KVERSION@@/$(kernel_version)/g' \
@@ -36,7 +43,8 @@ ifeq "$(kernel_version)" "sim"
 else
 	cd src && ./configure --prefix=/usr --sysconfdir=/etc --mandir=/usr/share/man --with-realtime=/usr/realtime-$(kernel_version) --enable-build-documentation=pdf
 endif
-	(cd src; $(MAKE))
+	# (cd src; $(MAKE) $(MAKEFLAGS) && $(MAKE) $(MAKEFLAGS) docs)
+	(cd src; $(MAKE) $(MAKEFLAGS))
 	touch build-stamp
 
 clean: debian/control
@@ -103,12 +111,15 @@ binary-arch: build install
 ifneq "$(kernel_version)" "sim"
 	dh_fixperms -X/emc_module_helper
 endif
+	dh_pysupport
 	dh_makeshlibs
 	dh_installdeb
+	# araisrobo: cat debian/@EMC2_PACKAGE_NAME@/DEBIAN/shlibs debian/shlibs.pre > debian/shlibs.local
+	# araisrobo: # workaround for scratchbox2 cross compile:
+	# araisrobo: # add --dpkg-shlibdeps-params=--ignore-missing-info to dh_shlibdeps
+	# araisrobo: dh_shlibdeps  --dpkg-shlibdeps-params=--ignore-missing-info -l debian/@EMC2_PACKAGE_NAME@/usr/lib
 	cat debian/@EMC2_PACKAGE_NAME@/DEBIAN/shlibs debian/shlibs.pre > debian/shlibs.local
 	dh_shlibdeps -l debian/@EMC2_PACKAGE_NAME@/usr/lib
-	# dh_pysupport
-	dh_python /usr/lib/python@PYTHON_VERSION@/site-packages /usr/lib/python@PYTHON_VERSION@/dist-packages
 	dh_gencontrol
 	dh_md5sums
 	dh_builddeb
