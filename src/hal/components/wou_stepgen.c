@@ -1515,7 +1515,8 @@ static void update_freq(void *arg, long period)
     int j;
     // ret, data[]: for wou_cmd()
     uint8_t data[MAX_DSIZE];
-    uint64_t sync_io_data;
+    uint64_t sync_out_data;
+    static uint32_t sync_out_check_count = 0;
     // int     ret;
 
     // for homing:
@@ -1671,38 +1672,63 @@ static void update_freq(void *arg, long period)
     /* end: process motion synchronized input */
 
     /* begin: process motion synchronized output */
-    sync_io_data = 0;
-    j = 0;
+    sync_out_data = 0;
+    sync_out_check_count ++;
+    #define CHECK_TIMEOUT ((uint32_t)(((double)(1/0.00065536)) * (0.4)))
+    if (sync_out_check_count ==  CHECK_TIMEOUT) {
+        sync_out_check_count = 0;
+        machine_control->prev_out =  *machine_control->dout0;
+    }
     for (i = 0; i < machine_control->num_gpio_out; i++) {
         if(((machine_control->prev_out >> i) & 0x01) !=
-                ((*(machine_control->out[i]) & 1))) {
-            //TODO: replace plasma-on with general purpose enable bit
-            if(i==1 /* plasma on bit */ && *(machine_control->plasma_enable)) {
-//                fprintf(stderr,"plasma_switch(%d)\n",
-//                        *(machine_control->sync_out[i]));
-                fprintf(stderr,"wou_stepgen.c: gpio_%2d => (%d)\n",
-                                        i,*(machine_control->out[i]));
-                sync_cmd = SYNC_DOUT | PACK_IO_ID(i) | PACK_DO_VAL(*(machine_control->out[i]));
-                memcpy(data, &sync_cmd, sizeof(uint16_t));
-                wou_cmd(&w_param, WB_WR_CMD, (JCMD_BASE | JCMD_SYNC_CMD),sizeof(uint16_t), data);
-
-            } else if(i !=1) {
+                (*(machine_control->out[i]))) {
+            {
+                // write a wou frame for sync output into command FIFO
                 fprintf(stderr,"wou_stepgen.c: gpio_%02d => (%d)\n",
                         i,*(machine_control->out[i]));
                 sync_cmd = SYNC_DOUT | PACK_IO_ID(i) | PACK_DO_VAL(*(machine_control->out[i]));
                 memcpy(data, &sync_cmd, sizeof(uint16_t));
                 wou_cmd(&w_param, WB_WR_CMD, (JCMD_BASE | JCMD_SYNC_CMD),sizeof(uint16_t), data);
+                // reset check timeout counter to start checking
+                sync_out_check_count = 0;
             }
-            j ++;
         }
 
-	sync_io_data |= ((*(machine_control->out[i]) & 1) << i);
-       // write a wou frame for sync input into command FIFO
+	sync_out_data |= ((*(machine_control->out[i])) << i);
     }
-
-    if (j > 0) {        //
-        machine_control->prev_out = sync_io_data;
-    }
+    machine_control->prev_out = sync_out_data;
+// obsolete:    sync_io_data = 0;
+// obsolete:    j = 0;
+// obsolete:    for (i = 0; i < machine_control->num_gpio_out; i++) {
+// obsolete:        if(((machine_control->prev_out >> i) & 0x01) !=
+// obsolete:                ((*(machine_control->out[i]) & 1))) {
+// obsolete:            //TODO: replace plasma-on with general purpose enable bit
+// obsolete:            if(i==1 /* plasma on bit */ && *(machine_control->plasma_enable)) {
+// obsolete://                fprintf(stderr,"plasma_switch(%d)\n",
+// obsolete://                        *(machine_control->sync_out[i]));
+// obsolete:                fprintf(stderr,"wou_stepgen.c: gpio_%2d => (%d)\n",
+// obsolete:                                        i,*(machine_control->out[i]));
+// obsolete:                sync_cmd = SYNC_DOUT | PACK_IO_ID(i) | PACK_DO_VAL(*(machine_control->out[i]));
+// obsolete:                memcpy(data, &sync_cmd, sizeof(uint16_t));
+// obsolete:                wou_cmd(&w_param, WB_WR_CMD, (JCMD_BASE | JCMD_SYNC_CMD),sizeof(uint16_t), data);
+// obsolete:
+// obsolete:            } else if(i !=1) {
+// obsolete:                fprintf(stderr,"wou_stepgen.c: gpio_%02d => (%d)\n",
+// obsolete:                        i,*(machine_control->out[i]));
+// obsolete:                sync_cmd = SYNC_DOUT | PACK_IO_ID(i) | PACK_DO_VAL(*(machine_control->out[i]));
+// obsolete:                memcpy(data, &sync_cmd, sizeof(uint16_t));
+// obsolete:                wou_cmd(&w_param, WB_WR_CMD, (JCMD_BASE | JCMD_SYNC_CMD),sizeof(uint16_t), data);
+// obsolete:            }
+// obsolete:            j ++;
+// obsolete:        }
+// obsolete:
+// obsolete:	sync_io_data |= ((*(machine_control->out[i]) & 1) << i);
+// obsolete:       // write a wou frame for sync input into command FIFO
+// obsolete:    }
+// obsolete:
+// obsolete:    if (j > 0) {        //
+// obsolete:        machine_control->prev_out = sync_io_data;
+// obsolete:    }
     /* end: process motion synchronized output */
 
 //    /* begin: wou_cmd */
